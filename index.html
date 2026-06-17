@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Mauj Locator | North Bengal</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --surface: #ffffff;
+            --primary: #0c831f; 
+            --primary-light: #e6f2eb;
+            --primary-dark: #0a6b18;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background-color: #e2e8f0; color: var(--text-main); display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+
+        /* App Container - Mobile Wrapper */
+        #app-container {
+            width: 100%; max-width: 480px; height: 100%; background: var(--bg-color);
+            position: relative; display: flex; flex-direction: column;
+            box-shadow: var(--shadow-lg); overflow: hidden;
+        }
+
+        /* --- HEADER & TOP BARS --- */
+        header { padding: 16px 20px; background: var(--surface); border-bottom: 1px solid var(--border); z-index: 20; }
+        
+        .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .logo-area h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+        
+        .status-pills { display: flex; gap: 8px; }
+        .pill { 
+            font-size: 0.7rem; font-weight: 700; padding: 6px 10px; border-radius: 20px; 
+            display: flex; align-items: center; gap: 4px; box-shadow: var(--shadow-sm);
+        }
+        .pill.gps { color: #fff; background: #2563eb; transition: background 0.3s; }
+        .pill.gps.error { background: var(--danger); }
+        .pill.weather { color: var(--text-main); background: #f1f5f9; border: 1px solid var(--border); }
+
+        .search-container { position: relative; }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; }
+        .search-input {
+            width: 100%; padding: 14px 14px 14px 40px; border: 1px solid var(--border);
+            border-radius: 12px; background: #f8fafc; font-size: 0.95rem; font-weight: 500;
+            transition: all 0.2s; outline: none;
+        }
+        .search-input:focus { background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+        /* --- MAIN CONTENT & VIEWS --- */
+        main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 90px; scroll-behavior: smooth; }
+        .view { display: none; height: 100%; animation: fadeSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .view.active { display: block; }
+
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DASHBOARD HOME --- */
+        .section-title { padding: 24px 20px 12px; font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
+        .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 20px; }
+
+        .category-tile {
+            background: var(--surface); border-radius: 16px; padding: 14px 6px;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+            border: 1px solid var(--border);
+        }
+        .category-tile:active { transform: scale(0.96); background: #f8fafc; }
+        .icon-circle { width: 48px; height: 48px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
+        .category-tile span { font-size: 0.75rem; font-weight: 700; color: var(--text-main); text-align: center; line-height: 1.2; }
+
+        .map-banner {
+            grid-column: span 4; background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            border-radius: 16px; padding: 20px; color: white; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: var(--shadow-md); cursor: pointer; transition: transform 0.15s;
+        }
+        .map-banner:active { transform: scale(0.98); }
+        .map-banner-text h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; }
+        .map-banner-text p { font-size: 0.85rem; font-weight: 500; opacity: 0.9; }
+        .map-banner .icon-circle { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); }
+
+        /* --- LIST VIEW & CARDS --- */
+        .list-header {
+            position: sticky; top: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+            padding: 16px 20px; display: flex; align-items: center; gap: 16px; z-index: 10;
+            border-bottom: 1px solid var(--border);
+        }
+        .back-btn { background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .back-btn:active { background: #e2e8f0; }
+
+        .item-card {
+            background: var(--surface); margin: 12px 20px; border-radius: 16px; padding: 16px;
+            display: flex; gap: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+        }
+        .item-img { width: 64px; height: 64px; border-radius: 12px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; }
+        .item-content { flex: 1; display: flex; flex-direction: column; }
+        .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+        .item-title { font-weight: 800; font-size: 1rem; color: var(--text-main); line-height: 1.2; padding-right: 8px; }
+        
+        .fav-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #cbd5e1; transition: color 0.2s; padding: 4px; margin: -4px; }
+        .fav-btn.active { color: var(--danger); }
+        
+        .item-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        .item-actions { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-top: auto; }
+        .meta-tags { display: flex; gap: 6px; }
+        .tag { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+        .tag.rating { background: var(--warning); color: #fff; }
+        .tag.dist { background: #f1f5f9; color: var(--text-muted); }
+        
+        .action-btns { display: flex; gap: 6px; }
+        .btn { padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; border: none; display: flex; align-items: center; gap: 4px; }
+        .btn-share { background: #f1f5f9; color: var(--text-main); }
+        .btn-go { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(12, 131, 31, 0.3); }
+        .btn:active { transform: scale(0.95); }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+        .empty-state h3 { font-weight: 700; margin-bottom: 8px; color: var(--text-main); }
+
+        /* --- MAP VIEW --- */
+        #map-container { width: 100%; height: 100%; position: relative; }
+        #leaflet-map { width: 100%; height: 100%; z-index: 1; }
+        .map-controls { position: absolute; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
+        .map-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; color: var(--text-main); }
+        .map-btn.recenter { top: auto; bottom: 30px; right: 20px; left: auto; position: absolute; background: var(--primary); color: white; }
+
+        /* Custom Leaflet Popups */
+        .leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: var(--shadow-lg); padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; padding: 16px; width: 220px !important; }
+        .popup-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .popup-icon { font-size: 1.8rem; }
+        .popup-title { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 0.95rem; color: var(--text-main); line-height: 1.2; }
+        .popup-desc { font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; }
+        .popup-btn { display: block; width: 100%; text-align: center; background: #2563eb; color: white; padding: 8px; border-radius: 8px; text-decoration: none; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.85rem; }
+
+        /* Custom Markers */
+        .user-marker { width: 18px; height: 18px; background: #2563eb; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 15px rgba(37, 99, 235, 0.8); }
+        .custom-pin { background: white; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); font-size: 18px; border: 2px solid var(--border); transition: transform 0.2s; }
+        .custom-pin:hover { transform: scale(1.1); z-index: 1000 !important; border-color: var(--primary); }
+
+        /* --- BOTTOM NAVIGATION --- */
+        .bottom-nav {
+            position: absolute; bottom: 0; width: 100%; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px 10px 24px; z-index: 50;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; cursor: pointer; width: 64px; transition: color 0.2s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item .icon { font-size: 1.4rem; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .nav-item.active .icon { transform: translateY(-2px); }
+
+        /* --- TOAST NOTIFICATIONS --- */
+        #toast-container { position: absolute; bottom: 100px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100; pointer-events: none; }
+        .toast { background: rgba(15, 23, 42, 0.9); color: white; padding: 10px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: var(--shadow-lg); animation: toastFade 0.3s, toastFadeOut 0.3s 2.7s forwards; }
+        @keyframes toastFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toastFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Header -->
+        <header id="main-header">
+            <div class="top-row">
+                <div class="logo-area">
+                    <h1>Mauj Locator 🎯</h1>
+                </div>
+                <div class="status-pills">
+                    <div class="pill weather" id="weather-status">⏳ Weather</div>
+                    <div class="pill gps" id="gps-status">📍 Locating</div>
+                </div>
+            </div>
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="search-input" placeholder="Search Momos, Beer, Spas..." autocomplete="off">
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-scroll">
+            
+            <!-- Dashboard View -->
+            <div id="view-home" class="view active">
+                <div class="grid-container" style="padding-top: 16px;">
+                    <div class="map-banner" onclick="switchView('map')">
+                        <div class="map-banner-text">
+                            <h3>Live Radar View</h3>
+                            <p>100 spots loaded nearby</p>
+                        </div>
+                        <div class="icon-circle">🗺️</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Meat & Grills</div>
+                <div class="grid-container">
+                    <div class="category-tile" onclick="openList('Pork')">
+                        <div class="icon-circle">🥓</div><span>Pork</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Beef')">
+                        <div class="icon-circle">🥩</div><span>Beef</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Buff')">
+                        <div class="icon-circle">🐃</div><span>Buff</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Other Meat')">
+                        <div class="icon-circle">🍗</div><span>Poultry & Fish</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Indulgence & Relaxation</div>
+                <div class="grid-container">
+                    <div class="category-tile" onclick="openList('Liquor')">
+                        <div class="icon-circle">🍺</div><span>Bars</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Store')">
+                        <div class="icon-circle">🍾</div><span>FL Shops</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Spa')">
+                        <div class="icon-circle">💆</div><span>Spas</span>
+                    </div>
+                    <div class="category-tile" onclick="openList('Wellness')">
+                        <div class="icon-circle">🧖</div><span>Wellness</span>
+                    </div>
+                </div>
+                <br>
+            </div>
+
+            <!-- List View (Categories & Search) -->
+            <div id="view-list" class="view">
+                <div class="list-header">
+                    <button class="back-btn" onclick="switchView('home')">←</button>
+                    <h2 id="list-title" style="font-size: 1.15rem; font-weight: 800;">Results</h2>
+                </div>
+                <div id="list-content">
+                    <!-- Cards populated by JS -->
+                </div>
+            </div>
+
+            <!-- Favorites View -->
+            <div id="view-favs" class="view">
+                <div class="list-header">
+                    <h2 style="font-size: 1.15rem; font-weight: 800;">⭐ Saved Spots</h2>
+                </div>
+                <div id="favs-content">
+                    <!-- Cards populated by JS -->
+                </div>
+            </div>
+
+            <!-- Map View -->
+            <div id="view-map" class="view" style="padding-bottom: 0;">
+                <div id="map-container">
+                    <div class="map-controls">
+                        <button class="map-btn" onclick="switchView('home')">←</button>
+                    </div>
+                    <div id="leaflet-map"></div>
+                    <button class="map-btn recenter" onclick="recenterMap()">🎯</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-target="home" onclick="switchView('home')">
+                <span class="icon">🏠</span><span>Home</span>
+            </div>
+            <div class="nav-item" data-target="map" onclick="switchView('map')">
+                <span class="icon">🗺️</span><span>Map</span>
+            </div>
+            <div class="nav-item" data-target="favs" onclick="switchView('favs')">
+                <span class="icon">⭐</span><span>Saved</span>
+            </div>
+            <div class="nav-item" onclick="showToast('Protocol active. Stay hydrated. 💧')">
+                <span class="icon">⚙️</span><span>Protocol</span>
+            </div>
+        </nav>
+
+        <!-- Toast Notifications Container -->
+        <div id="toast-container"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        /**
+         * MAUJ LOCATOR - DATASET
+         * Coordinates have been updated to realistically represent North Bengal zones.
+         * Routing utilizes Google Maps Universal URIs to find actual business locations
+         * rather than dropping arbitrary pins in empty fields.
+         */
+        const appData = [
+            // PORK
+            { id: "p1", name: "Naga Kitchen", type: "Pork", lat: 26.7160, lng: 88.4240, emoji: "🥓", desc: "Smoked pork with bamboo shoot, extreme spice. Near Hakim Para.", rating: 4.5 },
+            { id: "p2", name: "Hornbill Naga Diner", type: "Pork", lat: 26.7320, lng: 88.4140, emoji: "🍖", desc: "Authentic pork with Axone in Pradhan Nagar.", rating: 4.3 },
+            { id: "p3", name: "Taiwah Restaurant", type: "Pork", lat: 26.7165, lng: 88.4265, emoji: "🥟", desc: "Legendary pork momos and mixed chowmein near Bidhan Market.", rating: 4.4 },
+            { id: "p4", name: "Hong Kong Market Pork Skewers", type: "Pork", lat: 26.7170, lng: 88.4270, emoji: "🍢", desc: "Street-side spicy pork skewers deep in the market lanes.", rating: 4.2 },
+            { id: "p5", name: "Salugara Pork Momo Stall", type: "Pork", lat: 26.7550, lng: 88.4350, emoji: "🥟", desc: "Fresh steamed pork momos near the monastery gate.", rating: 4.6 },
+            { id: "p6", name: "Pradhan Nagar Pork Sekuwa", type: "Pork", lat: 26.7330, lng: 88.4130, emoji: "🔥", desc: "Nepali style grilled pork sekuwa on open coals.", rating: 4.5 },
+            { id: "p7", name: "2nd Mile Pork Grill", type: "Pork", lat: 26.7280, lng: 88.4180, emoji: "🍖", desc: "Roadside open fire pork roasts on Sevoke Road.", rating: 4.1 },
+            { id: "p8", name: "Tibetan Corner", type: "Pork", lat: 26.7155, lng: 88.4255, emoji: "🍜", desc: "Hearty Pork Thukpa and crisp Sha Phaley.", rating: 4.7 },
+            { id: "p9", name: "Ghoom Pork Shapta", type: "Pork", lat: 27.0100, lng: 88.2500, emoji: "🍲", desc: "Spicy stir-fried pork near Ghoom station, Darjeeling.", rating: 4.6 },
+            { id: "p10", name: "Darjeeling Kunga", type: "Pork", lat: 27.0420, lng: 88.2650, emoji: "🥢", desc: "Best Pork Thenthuk in the hills near Chowrasta.", rating: 4.8 },
+            { id: "p11", name: "Matigara Pork Cart", type: "Pork", lat: 26.7350, lng: 88.3900, emoji: "🍢", desc: "Evening pork stick stalls near the highway crossing.", rating: 4.0 },
+            { id: "p12", name: "Bhutia Market Pork", type: "Pork", lat: 26.7180, lng: 88.4280, emoji: "🥓", desc: "Dried and smoked pork cuts for cooking at home.", rating: 4.3 },
+            { id: "p13", name: "NJP Station Pork Momo", type: "Pork", lat: 26.6830, lng: 88.4410, emoji: "🥟", desc: "Quick hot bite before boarding trains.", rating: 3.9 },
+            { id: "p14", name: "Sevoke Road Pork Dry", type: "Pork", lat: 26.7300, lng: 88.4190, emoji: "🌶️", desc: "Spicy chili pork tossed in wok.", rating: 4.2 },
+            { id: "p15", name: "Kurseong Pork Trotters", type: "Pork", lat: 26.8820, lng: 88.2800, emoji: "🍲", desc: "Slow-cooked pork trotter soup for cold evenings.", rating: 4.5 },
+            { id: "p16", name: "Sukna Forest Pork", type: "Pork", lat: 26.8000, lng: 88.3800, emoji: "🍖", desc: "Village style pork curry near the forest edge.", rating: 4.4 },
+            { id: "p17", name: "Champasari Pork Point", type: "Pork", lat: 26.7450, lng: 88.4300, emoji: "🔥", desc: "Local favorite for deep-fried pork belly.", rating: 4.6 },
+            { id: "p18", name: "Naxalbari Pork Hub", type: "Pork", lat: 26.6800, lng: 88.2200, emoji: "🥢", desc: "Traditional pork dishes in the local village haat.", rating: 4.1 },
+            { id: "p19", name: "Bagdogra Highway Pork", type: "Pork", lat: 26.6850, lng: 88.3200, emoji: "🥓", desc: "Dhaba serving pork fry for travelers.", rating: 4.0 },
+            { id: "p20", name: "Venus More Pork Roll", type: "Pork", lat: 26.7130, lng: 88.4260, emoji: "🌯", desc: "Heavy paratha rolls stuffed with chili pork.", rating: 4.2 },
+
+            // BEEF
+            { id: "b1", name: "Babubhai Biryani", type: "Beef", lat: 26.7200, lng: 88.4280, emoji: "🥩", desc: "Deeply spiced beef biryani and kebabs.", rating: 4.4 },
+            { id: "b2", name: "Jama Masjid Food Street", type: "Beef", lat: 26.7130, lng: 88.4350, emoji: "🔥", desc: "Night grills, seekh kebabs, and heavy bhuna.", rating: 4.5 },
+            { id: "b3", name: "Mahabirsthan Grills", type: "Beef", lat: 26.7140, lng: 88.4320, emoji: "🥩", desc: "Quick street side beef rolls and tikka chunks.", rating: 4.1 },
+            { id: "b4", name: "Khalpara Beef Tikka", type: "Beef", lat: 26.7220, lng: 88.4250, emoji: "🍢", desc: "Charcoal grilled beef chunks in the alleys.", rating: 4.3 },
+            { id: "b5", name: "NJP Beef Curry Hotel", type: "Beef", lat: 26.6840, lng: 88.4420, emoji: "🍲", desc: "Heavy beef curry with thick rice for laborers.", rating: 4.0 },
+            { id: "b6", name: "Nayabazar Beef Chaap", type: "Beef", lat: 26.7100, lng: 88.4300, emoji: "🥘", desc: "Slow cooked rich beef chaap.", rating: 4.4 },
+            { id: "b7", name: "Siliguri Junction Beef Roll", type: "Beef", lat: 26.7250, lng: 88.4250, emoji: "🌯", desc: "Greasy and spicy beef rolls near the bus stand.", rating: 4.2 },
+            { id: "b8", name: "Islampur Beef Market", type: "Beef", lat: 26.2650, lng: 88.1900, emoji: "🥩", desc: "Raw cuts and local cooked stalls (outside city limits).", rating: 4.1 },
+            { id: "b9", name: "Hakimpara Beef Momos", type: "Beef", lat: 26.7150, lng: 88.4240, emoji: "🥟", desc: "Rare find of authentic beef momos in the city.", rating: 4.5 },
+            { id: "b10", name: "Darjeeling More Beef Nihari", type: "Beef", lat: 26.7350, lng: 88.4200, emoji: "🥣", desc: "Early morning Nihari (available in winter only).", rating: 4.6 },
+            { id: "b11", name: "Matigara Beef Bhuna", type: "Beef", lat: 26.7360, lng: 88.3910, emoji: "🔥", desc: "Dry roasted beef with heavy masalas.", rating: 4.3 },
+            { id: "b12", name: "Bidhan Market Beef Fry", type: "Beef", lat: 26.7160, lng: 88.4280, emoji: "🥩", desc: "Small stall serving fried beef pieces.", rating: 4.0 },
+            { id: "b13", name: "Bagdogra Beef Kebab Cart", type: "Beef", lat: 26.6860, lng: 88.3220, emoji: "🍢", desc: "Evening kebab smoke near airport road.", rating: 4.2 },
+            { id: "b14", name: "Fulbari Beef Dhaba", type: "Beef", lat: 26.6800, lng: 88.3500, emoji: "🥘", desc: "Truck stop heavy beef meals.", rating: 3.9 },
+            { id: "b15", name: "Salugara Beef Sekuwa", type: "Beef", lat: 26.7560, lng: 88.4360, emoji: "🔥", desc: "Nepali style beef sekuwa near the woods.", rating: 4.4 },
+
+            // BUFF
+            { id: "bf1", name: "Local Buff Momos Pradhan Nagar", type: "Buff", lat: 26.7310, lng: 88.4150, emoji: "🥟", desc: "Authentic Nepali style buff momos.", rating: 4.6 },
+            { id: "bf2", name: "Chowrasta Buff Sausage", type: "Buff", lat: 27.0450, lng: 88.2670, emoji: "🌭", desc: "Locally made buff sausages in Darjeeling.", rating: 4.7 },
+            { id: "bf3", name: "Pradhan Nagar Buff Sekuwa", type: "Buff", lat: 26.7320, lng: 88.4120, emoji: "🍢", desc: "Chewy, spicy buff sekuwa.", rating: 4.5 },
+            { id: "bf4", name: "Kurseong Buff Taipo", type: "Buff", lat: 26.8830, lng: 88.2810, emoji: "🥟", desc: "Massive steamed buff buns (Taipo).", rating: 4.8 },
+            { id: "bf5", name: "Mirik Buff Chowmein", type: "Buff", lat: 26.8880, lng: 88.1810, emoji: "🍜", desc: "Street style noodles loaded with buff by the lake.", rating: 4.3 },
+            { id: "bf6", name: "Darjeeling Buff Shaphaley", type: "Buff", lat: 27.0430, lng: 88.2660, emoji: "🥟", desc: "Deep fried meat bread.", rating: 4.6 },
+            { id: "bf7", name: "Salugara Buff Thukpa", type: "Buff", lat: 26.7540, lng: 88.4340, emoji: "🥣", desc: "Heavy winter soup with buff chunks.", rating: 4.4 },
+            { id: "bf8", name: "Hong Kong Market Buff Momos", type: "Buff", lat: 26.7165, lng: 88.4275, emoji: "🥟", desc: "Hidden stall inside the market maze.", rating: 4.2 },
+            { id: "bf9", name: "Sukna Buff Sukuti", type: "Buff", lat: 26.8020, lng: 88.3820, emoji: "🍖", desc: "Dried buff meat fry.", rating: 4.5 },
+            { id: "bf10", name: "Tingling Buff Choila", type: "Buff", lat: 26.8500, lng: 88.1800, emoji: "🌶️", desc: "Spicy roasted buff salad.", rating: 4.4 },
+            { id: "bf11", name: "Pashupati Border Buff", type: "Buff", lat: 26.8800, lng: 88.1200, emoji: "🥘", desc: "Authentic cross-border buff curries.", rating: 4.3 },
+            { id: "bf12", name: "Kalimpong Buff Momos", type: "Buff", lat: 27.0600, lng: 88.4700, emoji: "🥟", desc: "Juicy local buff momos in Kalimpong.", rating: 4.6 },
+            { id: "bf13", name: "Sonada Buff Roast", type: "Buff", lat: 26.9550, lng: 88.2750, emoji: "🔥", desc: "Fire roasted buff chunks.", rating: 4.2 },
+            { id: "bf14", name: "Champasari Buff Stall", type: "Buff", lat: 26.7460, lng: 88.4310, emoji: "🍢", desc: "Evening buff sticks.", rating: 4.1 },
+            { id: "bf15", name: "Naxalbari Buff Curry", type: "Buff", lat: 26.6810, lng: 88.2210, emoji: "🍲", desc: "Village style buff cooking.", rating: 4.0 },
+
+            // OTHER MEAT (Mutton/Chicken/Fish)
+            { id: "o1", name: "Zaika Mutton Biryani", type: "Other Meat", lat: 26.7250, lng: 88.4200, emoji: "🍗", desc: "Spicy local mutton biryani.", rating: 4.2 },
+            { id: "o2", name: "Kalpataru Fish", type: "Other Meat", lat: 26.7150, lng: 88.4270, emoji: "🐟", desc: "Authentic Bengali Ilish and Rui.", rating: 4.4 },
+            { id: "o3", name: "Delhi Masala Tikka", type: "Other Meat", lat: 26.7250, lng: 88.4250, emoji: "🍗", desc: "Mughlai style chicken tikka.", rating: 4.3 },
+            { id: "o4", name: "Gajoldoba Boroli Fish", type: "Other Meat", lat: 26.7600, lng: 88.5900, emoji: "🐟", desc: "Fresh crispy river fish fry at the barrage.", rating: 4.8 },
+            { id: "o5", name: "Rup Da Dhaba Mutton", type: "Other Meat", lat: 26.6500, lng: 88.4500, emoji: "🥘", desc: "Famous highway Mutton Kosha.", rating: 4.5 },
+            { id: "o6", name: "Matigara Chicken Pakora", type: "Other Meat", lat: 26.7360, lng: 88.3920, emoji: "🍗", desc: "Crunchy evening street snack.", rating: 4.2 },
+            { id: "o7", name: "Punjabi Para Tandoori", type: "Other Meat", lat: 26.7220, lng: 88.4280, emoji: "🔥", desc: "Whole tandoori chicken.", rating: 4.4 },
+            { id: "o8", name: "Maa Hotel Fish Curry", type: "Other Meat", lat: 26.7100, lng: 88.4300, emoji: "🍲", desc: "Classic Pice hotel Bengali fish thali.", rating: 4.3 },
+            { id: "o9", name: "Dudhia River Fish", type: "Other Meat", lat: 26.8200, lng: 88.2400, emoji: "🐟", desc: "Fresh catch fried on the riverbank.", rating: 4.6 },
+            { id: "o10", name: "NJP Chicken Roll", type: "Other Meat", lat: 26.6850, lng: 88.4420, emoji: "🌯", desc: "Heavy egg-chicken rolls outside station.", rating: 4.0 },
+            { id: "o11", name: "Sevoke Mutton Seekh", type: "Other Meat", lat: 26.7300, lng: 88.4180, emoji: "🍢", desc: "Soft mutton seekh kebabs.", rating: 4.5 },
+            { id: "o12", name: "Bagdogra Mutton Dhaba", type: "Other Meat", lat: 26.6830, lng: 88.3230, emoji: "🥘", desc: "Heavy highway mutton thali.", rating: 4.1 },
+            { id: "o13", name: "Bidhan Market Chicken Momo", type: "Other Meat", lat: 26.7165, lng: 88.4275, emoji: "🥟", desc: "Classic chicken momos.", rating: 4.3 },
+            { id: "o14", name: "Salugara Chicken Taipo", type: "Other Meat", lat: 26.7570, lng: 88.4350, emoji: "🥟", desc: "Giant steamed chicken buns.", rating: 4.4 },
+            { id: "o15", name: "City Centre KFC", type: "Other Meat", lat: 26.7400, lng: 88.3950, emoji: "🍗", desc: "Standard fried chicken bucket.", rating: 4.0 },
+
+            // LIQUOR / STORE
+            { id: "l1", name: "Sevoke Road FL Shop", type: "Store", lat: 26.7320, lng: 88.4180, emoji: "🍾", desc: "Premium foreign liquor and craft beer.", rating: 4.3 },
+            { id: "l2", name: "City Centre FL", type: "Store", lat: 26.7400, lng: 88.3950, emoji: "🍷", desc: "Mall liquor store with imported wines.", rating: 4.5 },
+            { id: "l3", name: "Dhaba by Amber Bar", type: "Liquor", lat: 26.7350, lng: 88.4150, emoji: "🍺", desc: "Cold beers with rich dhaba gravies.", rating: 4.4 },
+            { id: "l4", name: "The Irish House", type: "Liquor", lat: 26.7400, lng: 88.3960, emoji: "🍻", desc: "Draft beers and pub food in the mall.", rating: 4.6 },
+            { id: "l5", name: "Sikkim Border Wine Shop", type: "Store", lat: 26.8850, lng: 88.4720, emoji: "🥃", desc: "Tax-free liquor near the border.", rating: 4.2 },
+            { id: "l6", name: "Montana Bar", type: "Liquor", lat: 26.7250, lng: 88.4220, emoji: "🍸", desc: "Classic old-school bar in Siliguri.", rating: 4.1 },
+            { id: "l7", name: "Planet Mall FL Shop", type: "Store", lat: 26.7340, lng: 88.4160, emoji: "🍾", desc: "Convenient mall liquor purchase.", rating: 4.2 },
+            { id: "l8", name: "Bagdogra Highway Bar", type: "Liquor", lat: 26.6850, lng: 88.3200, emoji: "🍺", desc: "Last beer before the airport.", rating: 4.0 },
+            { id: "l9", name: "Salugara Wine Shop", type: "Store", lat: 26.7550, lng: 88.4350, emoji: "🍷", desc: "Quick stop before heading to hills.", rating: 4.1 },
+            { id: "l10", name: "Pradhan Nagar FL", type: "Store", lat: 26.7350, lng: 88.4100, emoji: "🥃", desc: "Well-stocked local FL shop.", rating: 4.3 },
+            { id: "l11", name: "Darjeeling More Beer Parlour", type: "Liquor", lat: 26.7360, lng: 88.4210, emoji: "🍻", desc: "Cheap beers and peanuts.", rating: 3.9 },
+            { id: "l12", name: "NJP Station Wine Shop", type: "Store", lat: 26.6850, lng: 88.4410, emoji: "🍾", desc: "Transit liquor purchase.", rating: 3.8 },
+            { id: "l13", name: "Kurseong Tourist Bar", type: "Liquor", lat: 26.8820, lng: 88.2800, emoji: "🍺", desc: "Beer with a valley view.", rating: 4.5 },
+            { id: "l14", name: "Joey's Pub", type: "Liquor", lat: 27.0430, lng: 88.2640, emoji: "🎸", desc: "Legendary English style pub in Darjeeling.", rating: 4.8 },
+            { id: "l15", name: "Matigara FL Outlet", type: "Store", lat: 26.7360, lng: 88.3900, emoji: "🍷", desc: "Large outlet for bulk purchase.", rating: 4.4 },
+            { id: "l16", name: "Fulbari Border Bar", type: "Liquor", lat: 26.6780, lng: 88.3520, emoji: "🍺", desc: "Trucker style bar near the border.", rating: 3.7 },
+            { id: "l17", name: "Vega Circle Lounge", type: "Liquor", lat: 26.7320, lng: 88.4180, emoji: "🍸", desc: "High-end cocktails and imported liquor.", rating: 4.5 },
+            { id: "l18", name: "Sukna Forest Edge FL", type: "Store", lat: 26.8020, lng: 88.3820, emoji: "🍾", desc: "Last shop before dense forest drive.", rating: 4.0 },
+            { id: "l19", name: "Mirik Lake Bar", type: "Liquor", lat: 26.8890, lng: 88.1810, emoji: "🍻", desc: "Cold beer near the lake.", rating: 4.2 },
+            { id: "l20", name: "Kalimpong Wine Store", type: "Store", lat: 27.0610, lng: 88.4710, emoji: "🍷", desc: "Local fruit wines and FL.", rating: 4.4 },
+
+            // SPA & WELLNESS
+            { id: "s1", name: "O2 Spa City Centre", type: "Spa", lat: 26.7400, lng: 88.3950, emoji: "💆", desc: "Premium deep tissue and Swedish massage.", rating: 4.5 },
+            { id: "s2", name: "Thai Spa Vega Circle", type: "Spa", lat: 26.7320, lng: 88.4180, emoji: "🧖", desc: "Authentic Thai stretching and reflexology.", rating: 4.4 },
+            { id: "s3", name: "Urban Oasis Spa", type: "Wellness", lat: 26.7400, lng: 88.4100, emoji: "🌿", desc: "Aromatherapy and relaxation routines.", rating: 4.2 },
+            { id: "s4", name: "Himalayan Wellness", type: "Wellness", lat: 26.7250, lng: 88.4200, emoji: "💆", desc: "Ayurvedic treatments and steam.", rating: 4.3 },
+            { id: "s5", name: "Sevoke Road Massage Clinic", type: "Spa", lat: 26.7330, lng: 88.4190, emoji: "💆", desc: "Sports massage and recovery.", rating: 4.1 },
+            { id: "s6", name: "Pradhan Nagar Spa House", type: "Spa", lat: 26.7360, lng: 88.4120, emoji: "🧖", desc: "Hot stone massage and facials.", rating: 4.0 },
+            { id: "s7", name: "Matigara Wellness Center", type: "Wellness", lat: 26.7380, lng: 88.3920, emoji: "🌿", desc: "Naturopathy and detox wraps.", rating: 4.6 },
+            { id: "s8", name: "Darjeeling Spa Retreat", type: "Spa", lat: 27.0460, lng: 88.2680, emoji: "💆", desc: "Luxury spa with mountain views.", rating: 4.8 },
+            { id: "s9", name: "Kurseong Ayurvedic Point", type: "Wellness", lat: 26.8840, lng: 88.2770, emoji: "🌿", desc: "Herbal oil massages.", rating: 4.4 },
+            { id: "s10", name: "Bagdogra Transit Spa", type: "Spa", lat: 26.6840, lng: 88.3240, emoji: "💆", desc: "Quick foot reflexology before flights.", rating: 4.2 },
+            { id: "s11", name: "Venus More Salon & Spa", type: "Spa", lat: 26.7110, lng: 88.4270, emoji: "🧖", desc: "Head massage and grooming.", rating: 4.1 },
+            { id: "s12", name: "Salugara Tibetan Massage", type: "Wellness", lat: 26.7580, lng: 88.4380, emoji: "🌿", desc: "Traditional Tibetan Ku Nye massage.", rating: 4.7 },
+            { id: "s13", name: "NJP Relief Spa", type: "Spa", lat: 26.6850, lng: 88.4440, emoji: "💆", desc: "Basic body massage for travelers.", rating: 3.8 },
+            { id: "s14", name: "Planet Mall Thai Spa", type: "Spa", lat: 26.7350, lng: 88.4170, emoji: "🧖", desc: "Dry Thai massage therapy.", rating: 4.3 },
+            { id: "s15", name: "Mirik Lake Wellness", type: "Wellness", lat: 26.8890, lng: 88.1820, emoji: "🌿", desc: "Meditation and light massage.", rating: 4.5 }
+        ];
+
+        // Core State
+        let userLat = 26.7160; // Default Siliguri Central
+        let userLng = 88.4240;
+        let mapInstance = null;
+        let userMarker = null;
+        let savedFavs = JSON.parse(localStorage.getItem('mauj_favs') || '[]');
+
+        // --- UTILITY FUNCTIONS ---
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return (R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)))).toFixed(1);
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => { if(container.contains(toast)) toast.remove(); }, 3000);
+        }
+
+        // --- NEW FEATURES (GitHub Pages / HTTPS Capabilities) ---
+
+        // 1. Live Weather Fetcher
+        async function fetchWeather() {
+            try {
+                // Using Open-Meteo for free, no-key weather data (Requires HTTPS)
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLng}&current_weather=true`);
+                const data = await res.json();
+                const temp = data.current_weather.temperature;
+                const weatherPill = document.getElementById('weather-status');
+                weatherPill.innerHTML = `🌤️ ${temp}°C`;
+            } catch (err) {
+                console.warn("Weather API failed", err);
+                document.getElementById('weather-status').innerHTML = `☁️ --°C`;
+            }
+        }
+
+        // 2. Web Share API
+        async function shareLocation(name, lat, lng) {
+            // Generating smart Google Maps Search URL
+            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' Siliguri West Bengal')}`;
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: `Check out ${name} on Mauj Locator`,
+                        text: `Found this spot: ${name}. Let's go!`,
+                        url: mapUrl
+                    });
+                    showToast('Shared successfully!');
+                } catch (err) {
+                    console.log('User cancelled share');
+                }
+            } else {
+                navigator.clipboard.writeText(mapUrl);
+                showToast('Link copied to clipboard!');
+            }
+        }
+
+        // 3. Smart Google Maps Router
+        function openInGoogleMaps(name, lat, lng) {
+            // This forces Google Maps to resolve the actual business instead of a random empty field coord.
+            const query = encodeURIComponent(`${name} near Siliguri, West Bengal`);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }
+
+        // 4. LocalStorage Favorites Manager
+        function toggleFav(id) {
+            const index = savedFavs.indexOf(id);
+            if (index > -1) {
+                savedFavs.splice(index, 1);
+                showToast('Removed from saved spots');
+            } else {
+                savedFavs.push(id);
+                showToast('⭐ Saved successfully!');
+            }
+            localStorage.setItem('mauj_favs', JSON.stringify(savedFavs));
+            
+            // Re-render views if active
+            const activeView = document.querySelector('.view.active').id;
+            if (activeView === 'view-list') handleSearch(); // Re-trigger current list
+            if (activeView === 'view-favs') renderFavs();
+        }
+
+        // --- GPS INITIALIZATION ---
+        function initGPS() {
+            const gpsText = document.getElementById('gps-status');
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        userLat = position.coords.latitude;
+                        userLng = position.coords.longitude;
+                        gpsText.innerHTML = `📍 Live`;
+                        gpsText.classList.remove('error');
+                        
+                        // Fetch weather for real location
+                        fetchWeather();
+
+                        if (mapInstance && userMarker) {
+                            userMarker.setLatLng([userLat, userLng]);
+                        }
+                    },
+                    (error) => {
+                        console.warn("GPS Error:", error);
+                        gpsText.innerHTML = "⚠️ Offline";
+                        gpsText.classList.add('error');
+                        fetchWeather(); // Fetch for default coords
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                fetchWeather();
+            }
+        }
+
+        // --- UI NAVIGATION ---
+        function switchView(target) {
+            // Hide all views
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            // Header display logic
+            document.getElementById('main-header').style.display = (target === 'map') ? 'none' : 'block';
+            
+            // Show target
+            document.getElementById(`view-${target}`).classList.add('active');
+            const navBtn = document.querySelector(`.nav-item[data-target="${target}"]`);
+            if (navBtn) navBtn.classList.add('active');
+
+            // Scroll to top
+            document.getElementById('main-scroll').scrollTop = 0;
+
+            // Specific View Logic
+            if (target === 'map') initMap();
+            if (target === 'favs') renderFavs();
+        }
+
+        // --- LIST RENDERING ---
+        function generateCardHTML(item, dist) {
+            const isFav = savedFavs.includes(item.id);
+            return `
+                <div class="item-card">
+                    <div class="item-img">${item.emoji}</div>
+                    <div class="item-content">
+                        <div class="item-header">
+                            <div class="item-title">${item.name}</div>
+                            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFav('${item.id}')">${isFav ? '❤️' : '🤍'}</button>
+                        </div>
+                        <div class="item-desc">${item.desc}</div>
+                        <div class="item-actions">
+                            <div class="meta-tags">
+                                <span class="tag rating">★ ${item.rating}</span>
+                                <span class="tag dist">${dist} km</span>
+                            </div>
+                            <div class="action-btns">
+                                <button class="btn btn-share" onclick="shareLocation('${item.name}', ${item.lat}, ${item.lng})">↗️</button>
+                                <button class="btn btn-go" onclick="openInGoogleMaps('${item.name}', ${item.lat}, ${item.lng})">GO</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderList(items, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if(items.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🏜️</div>
+                        <h3>Nothing found here</h3>
+                        <p>Try adjusting your search or saving some spots first.</p>
+                    </div>`;
+                return;
+            }
+
+            // Sort by dynamic distance
+            items.sort((a, b) => getDistance(userLat, userLng, a.lat, a.lng) - getDistance(userLat, userLng, b.lat, b.lng));
+
+            let htmlString = '';
+            items.forEach(item => {
+                const dist = getDistance(userLat, userLng, item.lat, item.lng);
+                htmlString += generateCardHTML(item, dist);
+            });
+            container.innerHTML = htmlString;
+        }
+
+        function openList(category) {
+            switchView('list');
+            const titleEmoji = appData.find(i => i.type === category)?.emoji || "📌";
+            document.getElementById('list-title').innerText = `${titleEmoji} ${category}`;
+            
+            const items = appData.filter(item => item.type === category);
+            renderList(items, 'list-content');
+        }
+
+        function renderFavs() {
+            const favItems = appData.filter(item => savedFavs.includes(item.id));
+            renderList(favItems, 'favs-content');
+        }
+
+        // --- SEARCH LOGIC ---
+        const searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('input', handleSearch);
+
+        function handleSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            if(query.length < 2 && document.getElementById('view-list').classList.contains('active') && document.getElementById('list-title').innerText.includes('Search')) {
+                switchView('home');
+                return;
+            }
+            if(query.length < 2) return;
+            
+            if (!document.getElementById('view-list').classList.contains('active')) {
+                switchView('list');
+            }
+            
+            document.getElementById('list-title').innerText = `🔍 Results for "${query}"`;
+            
+            const items = appData.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.type.toLowerCase().includes(query) || 
+                item.desc.toLowerCase().includes(query)
+            );
+            renderList(items, 'list-content');
+        }
+
+        // --- MAP LOGIC ---
+        function initMap() {
+            if (!mapInstance) {
+                mapInstance = L.map('leaflet-map', { zoomControl: false }).setView([userLat, userLng], 13);
+                
+                // Using CartoDB Positron for a cleaner, modern app look
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OpenStreetMap, © CartoDB',
+                    maxZoom: 19
+                }).addTo(mapInstance);
+
+                const userIcon = L.divIcon({ className: 'user-marker', iconSize: [18, 18] });
+                userMarker = L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstance);
+
+                // Render all nodes
+                appData.forEach(item => {
+                    const icon = L.divIcon({
+                        className: 'custom-pin-wrapper',
+                        html: `<div class="custom-pin">${item.emoji}</div>`,
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17]
+                    });
+                    
+                    const marker = L.marker([item.lat, item.lng], { icon: icon }).addTo(mapInstance);
+                    
+                    // Smart Popup
+                    marker.bindPopup(`
+                        <div class="popup-header">
+                            <div class="popup-icon">${item.emoji}</div>
+                            <div class="popup-title">${item.name}</div>
+                        </div>
+                        <div class="popup-desc">${item.desc}</div>
+                        <a href="javascript:void(0)" onclick="openInGoogleMaps('${item.name}', ${item.lat}, ${item.lng})" class="popup-btn">Navigate Here</a>
+                    `);
+                });
+            } else {
+                mapInstance.invalidateSize();
+            }
+        }
+
+        function recenterMap() {
+            if (mapInstance) {
+                mapInstance.flyTo([userLat, userLng], 15, { animate: true, duration: 1 });
+            }
+        }
+
+        // --- BOOT SEQUENCE ---
+        window.onload = () => {
+            initGPS();
+            switchView('home');
+        };
+    </script>
+</body>
+</html>
