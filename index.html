@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Mauj Locator | North Bengal</title>
     
-    <!-- Link to the physical manifest file -->
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mdn/pwa-examples/main/a2hs/images/hello-icon-512.png">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0c831f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mauj">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3754/3754228.png">
+    
+    <!-- Embedded PWA Manifest (Data URI) -->
+    <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Mauj%20Locator%22%2C%22short_name%22%3A%22Mauj%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%230c831f%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F3754%2F3754228.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+
+    <title>Mauj Locator | North Bengal</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -248,15 +252,13 @@
                 <br>
             </div>
 
-            <!-- List View (Categories & Search) -->
+            <!-- List View -->
             <div id="view-list" class="view">
                 <div class="list-header">
                     <button class="back-btn" onclick="switchView('home')">←</button>
                     <h2 id="list-title" style="font-size: 1.15rem; font-weight: 800;">Results</h2>
                 </div>
-                <div id="list-content">
-                    <!-- Cards populated by JS -->
-                </div>
+                <div id="list-content"></div>
             </div>
 
             <!-- Favorites View -->
@@ -264,9 +266,7 @@
                 <div class="list-header">
                     <h2 style="font-size: 1.15rem; font-weight: 800;">⭐ Saved Spots</h2>
                 </div>
-                <div id="favs-content">
-                    <!-- Cards populated by JS -->
-                </div>
+                <div id="favs-content"></div>
             </div>
 
             <!-- Map View -->
@@ -292,8 +292,9 @@
             <div class="nav-item" data-target="favs" onclick="switchView('favs')">
                 <span class="icon">⭐</span><span>Saved</span>
             </div>
-            <div class="nav-item" onclick="showToast('Protocol active. Stay hydrated. 💧')">
-                <span class="icon">⚙️</span><span>Protocol</span>
+            <!-- Dynamic Install Button (Hidden by default) -->
+            <div class="nav-item" id="install-btn" style="display: none; color: var(--warning);" onclick="installPWA()">
+                <span class="icon">📲</span><span>App</span>
             </div>
         </nav>
 
@@ -304,11 +305,45 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
+        // --- PWA SERVICE WORKER & INSTALL LOGIC ---
+        if ('serviceWorker' in navigator) {
+            // Generating an inline Service Worker using a Blob to maintain the single-file architecture
+            const swCode = `
+                self.addEventListener('install', (e) => { self.skipWaiting(); });
+                self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+                self.addEventListener('fetch', (e) => { 
+                    // Basic pass-through for PWA compliance
+                    e.respondWith(fetch(e.request).catch(() => new Response('Offline mode requires internet.'))); 
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).then(() => console.log('PWA Service Worker Ready'));
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Reveal the Install App button in the bottom nav
+            document.getElementById('install-btn').style.display = 'flex';
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('install-btn').style.display = 'none';
+                        showToast('Installing Mauj Locator...');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
         /**
          * MAUJ LOCATOR - DATASET
-         * Coordinates have been updated to realistically represent North Bengal zones.
-         * Routing utilizes Google Maps Universal URIs to find actual business locations
-         * rather than dropping arbitrary pins in empty fields.
          */
         const appData = [
             // PORK
@@ -367,7 +402,7 @@
             { id: "bf14", name: "Champasari Buff Stall", type: "Buff", lat: 26.7460, lng: 88.4310, emoji: "🍢", desc: "Evening buff sticks.", rating: 4.1 },
             { id: "bf15", name: "Naxalbari Buff Curry", type: "Buff", lat: 26.6810, lng: 88.2210, emoji: "🍲", desc: "Village style buff cooking.", rating: 4.0 },
 
-            // OTHER MEAT (Mutton/Chicken/Fish)
+            // OTHER MEAT
             { id: "o1", name: "Zaika Mutton Biryani", type: "Other Meat", lat: 26.7250, lng: 88.4200, emoji: "🍗", desc: "Spicy local mutton biryani.", rating: 4.2 },
             { id: "o2", name: "Kalpataru Fish", type: "Other Meat", lat: 26.7150, lng: 88.4270, emoji: "🐟", desc: "Authentic Bengali Ilish and Rui.", rating: 4.4 },
             { id: "o3", name: "Delhi Masala Tikka", type: "Other Meat", lat: 26.7250, lng: 88.4250, emoji: "🍗", desc: "Mughlai style chicken tikka.", rating: 4.3 },
@@ -384,7 +419,7 @@
             { id: "o14", name: "Salugara Chicken Taipo", type: "Other Meat", lat: 26.7570, lng: 88.4350, emoji: "🥟", desc: "Giant steamed chicken buns.", rating: 4.4 },
             { id: "o15", name: "City Centre KFC", type: "Other Meat", lat: 26.7400, lng: 88.3950, emoji: "🍗", desc: "Standard fried chicken bucket.", rating: 4.0 },
 
-            // LIQUOR / STORE
+            // LIQUOR
             { id: "l1", name: "Sevoke Road FL Shop", type: "Store", lat: 26.7320, lng: 88.4180, emoji: "🍾", desc: "Premium foreign liquor and craft beer.", rating: 4.3 },
             { id: "l2", name: "City Centre FL", type: "Store", lat: 26.7400, lng: 88.3950, emoji: "🍷", desc: "Mall liquor store with imported wines.", rating: 4.5 },
             { id: "l3", name: "Dhaba by Amber Bar", type: "Liquor", lat: 26.7350, lng: 88.4150, emoji: "🍺", desc: "Cold beers with rich dhaba gravies.", rating: 4.4 },
@@ -406,7 +441,7 @@
             { id: "l19", name: "Mirik Lake Bar", type: "Liquor", lat: 26.8890, lng: 88.1810, emoji: "🍻", desc: "Cold beer near the lake.", rating: 4.2 },
             { id: "l20", name: "Kalimpong Wine Store", type: "Store", lat: 27.0610, lng: 88.4710, emoji: "🍷", desc: "Local fruit wines and FL.", rating: 4.4 },
 
-            // SPA & WELLNESS
+            // SPA
             { id: "s1", name: "O2 Spa City Centre", type: "Spa", lat: 26.7400, lng: 88.3950, emoji: "💆", desc: "Premium deep tissue and Swedish massage.", rating: 4.5 },
             { id: "s2", name: "Thai Spa Vega Circle", type: "Spa", lat: 26.7320, lng: 88.4180, emoji: "🧖", desc: "Authentic Thai stretching and reflexology.", rating: 4.4 },
             { id: "s3", name: "Urban Oasis Spa", type: "Wellness", lat: 26.7400, lng: 88.4100, emoji: "🌿", desc: "Aromatherapy and relaxation routines.", rating: 4.2 },
@@ -425,13 +460,12 @@
         ];
 
         // Core State
-        let userLat = 26.7160; // Default Siliguri Central
+        let userLat = 26.7160; 
         let userLng = 88.4240;
         let mapInstance = null;
         let userMarker = null;
         let savedFavs = JSON.parse(localStorage.getItem('mauj_favs') || '[]');
 
-        // --- UTILITY FUNCTIONS ---
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -449,52 +483,35 @@
             setTimeout(() => { if(container.contains(toast)) toast.remove(); }, 3000);
         }
 
-        // --- NEW FEATURES (GitHub Pages / HTTPS Capabilities) ---
-
-        // 1. Live Weather Fetcher
         async function fetchWeather() {
             try {
-                // Using Open-Meteo for free, no-key weather data (Requires HTTPS)
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLng}&current_weather=true`);
                 const data = await res.json();
                 const temp = data.current_weather.temperature;
-                const weatherPill = document.getElementById('weather-status');
-                weatherPill.innerHTML = `🌤️ ${temp}°C`;
+                document.getElementById('weather-status').innerHTML = `🌤️ ${temp}°C`;
             } catch (err) {
-                console.warn("Weather API failed", err);
                 document.getElementById('weather-status').innerHTML = `☁️ --°C`;
             }
         }
 
-        // 2. Web Share API
         async function shareLocation(name, lat, lng) {
-            // Generating smart Google Maps Search URL
             const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' Siliguri West Bengal')}`;
             if (navigator.share) {
                 try {
-                    await navigator.share({
-                        title: `Check out ${name} on Mauj Locator`,
-                        text: `Found this spot: ${name}. Let's go!`,
-                        url: mapUrl
-                    });
+                    await navigator.share({ title: `Check out ${name} on Mauj Locator`, text: `Found this spot: ${name}. Let's go!`, url: mapUrl });
                     showToast('Shared successfully!');
-                } catch (err) {
-                    console.log('User cancelled share');
-                }
+                } catch (err) { }
             } else {
                 navigator.clipboard.writeText(mapUrl);
                 showToast('Link copied to clipboard!');
             }
         }
 
-        // 3. Smart Google Maps Router
         function openInGoogleMaps(name, lat, lng) {
-            // This forces Google Maps to resolve the actual business instead of a random empty field coord.
             const query = encodeURIComponent(`${name} near Siliguri, West Bengal`);
             window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
         }
 
-        // 4. LocalStorage Favorites Manager
         function toggleFav(id) {
             const index = savedFavs.indexOf(id);
             if (index > -1) {
@@ -506,13 +523,11 @@
             }
             localStorage.setItem('mauj_favs', JSON.stringify(savedFavs));
             
-            // Re-render views if active
             const activeView = document.querySelector('.view.active').id;
-            if (activeView === 'view-list') handleSearch(); // Re-trigger current list
+            if (activeView === 'view-list') handleSearch();
             if (activeView === 'view-favs') renderFavs();
         }
 
-        // --- GPS INITIALIZATION ---
         function initGPS() {
             const gpsText = document.getElementById('gps-status');
             if ("geolocation" in navigator) {
@@ -522,19 +537,13 @@
                         userLng = position.coords.longitude;
                         gpsText.innerHTML = `📍 Live`;
                         gpsText.classList.remove('error');
-                        
-                        // Fetch weather for real location
                         fetchWeather();
-
-                        if (mapInstance && userMarker) {
-                            userMarker.setLatLng([userLat, userLng]);
-                        }
+                        if (mapInstance && userMarker) userMarker.setLatLng([userLat, userLng]);
                     },
                     (error) => {
-                        console.warn("GPS Error:", error);
                         gpsText.innerHTML = "⚠️ Offline";
                         gpsText.classList.add('error');
-                        fetchWeather(); // Fetch for default coords
+                        fetchWeather();
                     },
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
@@ -543,29 +552,23 @@
             }
         }
 
-        // --- UI NAVIGATION ---
         function switchView(target) {
-            // Hide all views
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
-            // Header display logic
             document.getElementById('main-header').style.display = (target === 'map') ? 'none' : 'block';
-            
-            // Show target
             document.getElementById(`view-${target}`).classList.add('active');
-            const navBtn = document.querySelector(`.nav-item[data-target="${target}"]`);
-            if (navBtn) navBtn.classList.add('active');
+            
+            // Only add 'active' class to regular navigation items (skip the install button)
+            if(target !== 'install') {
+                const navBtn = document.querySelector(`.nav-item[data-target="${target}"]`);
+                if (navBtn) navBtn.classList.add('active');
+            }
 
-            // Scroll to top
             document.getElementById('main-scroll').scrollTop = 0;
-
-            // Specific View Logic
             if (target === 'map') initMap();
             if (target === 'favs') renderFavs();
         }
 
-        // --- LIST RENDERING ---
         function generateCardHTML(item, dist) {
             const isFav = savedFavs.includes(item.id);
             return `
@@ -595,20 +598,11 @@
         function renderList(items, containerId) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
             if(items.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🏜️</div>
-                        <h3>Nothing found here</h3>
-                        <p>Try adjusting your search or saving some spots first.</p>
-                    </div>`;
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">🏜️</div><h3>Nothing found here</h3></div>`;
                 return;
             }
-
-            // Sort by dynamic distance
             items.sort((a, b) => getDistance(userLat, userLng, a.lat, a.lng) - getDistance(userLat, userLng, b.lat, b.lng));
-
             let htmlString = '';
             items.forEach(item => {
                 const dist = getDistance(userLat, userLng, item.lat, item.lng);
@@ -621,7 +615,6 @@
             switchView('list');
             const titleEmoji = appData.find(i => i.type === category)?.emoji || "📌";
             document.getElementById('list-title').innerText = `${titleEmoji} ${category}`;
-            
             const items = appData.filter(item => item.type === category);
             renderList(items, 'list-content');
         }
@@ -631,63 +624,33 @@
             renderList(favItems, 'favs-content');
         }
 
-        // --- SEARCH LOGIC ---
-        const searchInput = document.getElementById('search-input');
-        searchInput.addEventListener('input', handleSearch);
+        document.getElementById('search-input').addEventListener('input', handleSearch);
 
         function handleSearch() {
-            const query = searchInput.value.toLowerCase().trim();
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
             if(query.length < 2 && document.getElementById('view-list').classList.contains('active') && document.getElementById('list-title').innerText.includes('Search')) {
                 switchView('home');
                 return;
             }
             if(query.length < 2) return;
-            
-            if (!document.getElementById('view-list').classList.contains('active')) {
-                switchView('list');
-            }
-            
+            if (!document.getElementById('view-list').classList.contains('active')) switchView('list');
             document.getElementById('list-title').innerText = `🔍 Results for "${query}"`;
-            
-            const items = appData.filter(item => 
-                item.name.toLowerCase().includes(query) || 
-                item.type.toLowerCase().includes(query) || 
-                item.desc.toLowerCase().includes(query)
-            );
+            const items = appData.filter(item => item.name.toLowerCase().includes(query) || item.type.toLowerCase().includes(query) || item.desc.toLowerCase().includes(query));
             renderList(items, 'list-content');
         }
 
-        // --- MAP LOGIC ---
         function initMap() {
             if (!mapInstance) {
                 mapInstance = L.map('leaflet-map', { zoomControl: false }).setView([userLat, userLng], 13);
-                
-                // Using CartoDB Positron for a cleaner, modern app look
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                    attribution: '© OpenStreetMap, © CartoDB',
-                    maxZoom: 19
-                }).addTo(mapInstance);
-
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(mapInstance);
                 const userIcon = L.divIcon({ className: 'user-marker', iconSize: [18, 18] });
                 userMarker = L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstance);
 
-                // Render all nodes
                 appData.forEach(item => {
-                    const icon = L.divIcon({
-                        className: 'custom-pin-wrapper',
-                        html: `<div class="custom-pin">${item.emoji}</div>`,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 17]
-                    });
-                    
+                    const icon = L.divIcon({ className: 'custom-pin-wrapper', html: `<div class="custom-pin">${item.emoji}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
                     const marker = L.marker([item.lat, item.lng], { icon: icon }).addTo(mapInstance);
-                    
-                    // Smart Popup
                     marker.bindPopup(`
-                        <div class="popup-header">
-                            <div class="popup-icon">${item.emoji}</div>
-                            <div class="popup-title">${item.name}</div>
-                        </div>
+                        <div class="popup-header"><div class="popup-icon">${item.emoji}</div><div class="popup-title">${item.name}</div></div>
                         <div class="popup-desc">${item.desc}</div>
                         <a href="javascript:void(0)" onclick="openInGoogleMaps('${item.name}', ${item.lat}, ${item.lng})" class="popup-btn">Navigate Here</a>
                     `);
@@ -698,12 +661,9 @@
         }
 
         function recenterMap() {
-            if (mapInstance) {
-                mapInstance.flyTo([userLat, userLng], 15, { animate: true, duration: 1 });
-            }
+            if (mapInstance) mapInstance.flyTo([userLat, userLng], 15, { animate: true, duration: 1 });
         }
 
-        // --- BOOT SEQUENCE ---
         window.onload = () => {
             initGPS();
             switchView('home');
