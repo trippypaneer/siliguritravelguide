@@ -1,0 +1,16 @@
+{
+"name": "Mauj Locator",
+"short_name": "Mauj",
+"start_url": "./index.html",
+"display": "standalone",
+"background_color": "#f8fafc",
+"theme_color": "#0c831f",
+"icons": [
+{
+"src": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Map_pin_icon.svg/512px-Map_pin_icon.svg.png",
+"sizes": "512x512",
+"type": "image/png",
+"purpose": "any maskable"
+}
+]
+}
