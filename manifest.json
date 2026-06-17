@@ -1,0 +1,17 @@
+{
+"name": "Mauj Locator",
+"short_name": "Mauj",
+"description": "Discover spots in North Bengal",
+"start_url": "./index.html",
+"display": "standalone",
+"background_color": "#f8fafc",
+"theme_color": "#ffffff",
+"icons": [
+{
+"src": "./icon.png",
+"sizes": "512x512",
+"type": "image/png",
+"purpose": "any maskable"
+}
+]
+}
